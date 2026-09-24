@@ -1,0 +1,19 @@
+.config
+*.o
+*.pyc
+
+get-started/**/CMakeFiles
+get-started/**/log
+
+# Example project files
+**/build/
+**/build_*_*/
+**/sdkconfig
+**/sdkconfig.old
+
+# lock files for examples and components
+dependencies.lock
+
+/SmartCar_wifi_camera
+/SmartCar_wifi_gamepad
+/esp32_matter_gateway_c61
