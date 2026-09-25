@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
@@ -162,10 +162,14 @@ void apl_console_init(void)
                "On Windows, try using Windows Terminal or Putty instead.\n");
     }
 
-    // 创建任务并绑定到 CPU1
-    BaseType_t task_created = xTaskCreatePinnedToCore(&apl_console_task, "apl_console", 
-        BOARD_CONFIG_CONSOLE_TASK_STACK_SIZE, NULL, BOARD_CONFIG_CONSOLE_TASK_PRIOR, NULL, BOARD_CONFIG_CONSOLE_TASK_CPU);
-    // 使用 ESP_ERROR_CHECK 检查是否成功创建任务
+    // 创建任务（栈内存位置由 board_config 配置：1=PSRAM，0=内部 RAM）
+#if BOARD_CONFIG_CONSOLE_TASK_STACK_IN_PSRAM
+    const uint32_t task_stack_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
+#else
+    const uint32_t task_stack_caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+#endif
+    BaseType_t task_created = xTaskCreatePinnedToCoreWithCaps(&apl_console_task, "apl_console",
+        BOARD_CONFIG_CONSOLE_TASK_STACK_SIZE, NULL, BOARD_CONFIG_CONSOLE_TASK_PRIOR, NULL, BOARD_CONFIG_CONSOLE_TASK_CPU, task_stack_caps);
     ESP_ERROR_CHECK(task_created == pdPASS ? ESP_OK : ESP_FAIL);
 }
 
