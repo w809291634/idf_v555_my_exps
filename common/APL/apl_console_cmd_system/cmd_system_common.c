@@ -252,6 +252,74 @@ static int tasks_info(int argc, char **argv)
 
 #else
 
+// 辅助函数：根据地址返回内存区域名称（显示任务栈分配在哪个 RAM）
+static const char* get_memory_region(const void* addr)
+{
+    uint32_t a = (uint32_t)addr;
+#if CONFIG_IDF_TARGET_ESP32P4
+    /* TRM 表 9.3-1：地址映射（cache 区间 0x4xxx，CPU 直接访问区间 0x8xxx） */
+    // 1. 外部 flash（cache 映射，指令/数据总线共用 64MB）
+    if (a >= 0x40000000 && a < 0x44000000)
+        return "ExFlash(I/D)";
+    // 2. 外部 flash（CPU 直接访问，调试）
+    else if (a >= 0x80000000 && a < 0x84000000)
+        return "ExFlash(D)";
+    // 3. 外部 RAM/PSRAM（cache 映射，64MB）
+    else if (a >= 0x48000000 && a < 0x4C000000)
+        return "ExPSRAM(D)";
+    // 4. 外部 RAM/PSRAM（CPU 直接访问，调试）
+    else if (a >= 0x88000000 && a < 0x8C000000)
+        return "ExPSRAM(D)";
+    // 5. HP SPM（暂存内存 8KB）
+    else if (a >= 0x30100000 && a < 0x30102000)
+        return "HP-SPM";
+    // 6. 内部 HP ROM（128KB）
+    else if (a >= 0x4FC00000 && a < 0x4FC20000)
+        return "ROM";
+    else if (a >= 0x8FC00000 && a < 0x8FC20000)
+        return "ROM(D)";
+    // 7. 内部 HP L2MEM / SRAM（768KB，数据/指令双映射）
+    else if (a >= 0x4FF00000 && a < 0x4FFC0000)
+        return "SRAM(D/I)";
+    else if (a >= 0x8FF00000 && a < 0x8FFC0000)
+        return "SRAM(D)";
+    // 8. LP ROM（16KB）
+    else if (a >= 0x50100000 && a < 0x50104000)
+        return "LP-ROM";
+    // 9. LP SRAM（32KB）
+    else if (a >= 0x50108000 && a < 0x50110000)
+        return "LP-RAM";
+    else
+        return "Other";
+#elif CONFIG_IDF_TARGET_ESP32S3
+    // 外部存储器（数据总线映射）
+    if (a >= 0x3C000000 && a < 0x3E000000)
+        return "ExPSRAM(D)";
+    else if (a >= 0x42000000 && a < 0x44000000)
+        return "ExFlash(I)";
+    // 内部 ROM（数据总线）
+    else if (a >= 0x3FF00000 && a < 0x3FF20000)
+        return "ROM1(D)";
+    // 内部 SRAM（数据总线）
+    else if (a >= 0x3FC88000 && a < 0x3FCF0000)
+        return "SRAM1(D)";
+    else if (a >= 0x3FCF0000 && a < 0x3FD00000)
+        return "SRAM2(D)";
+    // 内部 ROM（指令总线）
+    else if (a >= 0x40000000 && a < 0x40060000)
+        return "ROM0/1(I)";
+    // 内部 SRAM（指令总线）
+    else if (a >= 0x40370000 && a < 0x40378000)
+        return "SRAM0(I)";
+    else if (a >= 0x40378000 && a < 0x403E0000)
+        return "SRAM1(I)";
+    else
+        return "Other";
+#else
+    return "Other";
+#endif
+}
+
 static int tasks_info(int argc, char **argv)
 {
     // 获取当前系统中的任务数量
@@ -268,11 +336,11 @@ static int tasks_info(int argc, char **argv)
         
 #ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
         // 打印表头（包含 Core 和 Cpu Usage）
-        printf(" Task Name       | Pri | State   | Core | Water Mask | Stack | Usage | Cpu Usage\r\n");
+        printf(" Task Name       | Pri | State   | Core | Water Mask | Stack | Stack Start | Mem Region | Usage | Cpu Usage\r\n");
         printf("---------------------------------------------------------------------------\r\n");
 #else
         // 打印表头（只包含 Core）
-        printf(" Task Name       | Pri | State   | Core | Water Mask | Stack | Usage\r\n");
+        printf(" Task Name       | Pri | State   | Core | Water Mask | Stack | Stack Start | Mem Region | Usage\r\n");
         printf("---------------------------------------------------------------\r\n");
 #endif
         // 遍历所有任务并打印其状态和栈使用情况
@@ -306,26 +374,34 @@ static int tasks_info(int argc, char **argv)
             BaseType_t lastRunCore = xTaskGetCoreID(xTask);
             const char* coreStr = (lastRunCore == 0 || lastRunCore == 1) ? 
                                   (lastRunCore == 0 ? "CPU0" : "CPU1") : "?";
+
+            // 获取栈起始地址，并判断其分配在哪个 RAM 区域
+            void* stackStart = pxTaskGetStackStart(xTask);
+            const char* memRegion = get_memory_region(stackStart);
 #ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
             // 打印表格
-            printf("%-16s| %-3d | %-7s | %-4s | %9lu | %5lu | %5.1f%% | %5.1f%%\r\n",
+            printf("%-16s| %-3d | %-7s | %-4s | %9lu | %5lu | 0x%08X | %-10s | %5.1f%% | %5.1f%%\r\n",
                    pxTaskStatusArray[x].pcTaskName,
                    (unsigned int)pxTaskStatusArray[x].uxCurrentPriority,
                    stateStr,
                    coreStr,
                    (unsigned long)pxTaskStatusArray[x].usStackHighWaterMark,
                    (unsigned long)stackTotal,
+                   (unsigned int)stackStart,
+                   memRegion,
                    stackUsedPercent,
                    vTaskGetCpuUsagePercent(xTask));
 #else
             // 打印表格
-            printf("%-16s| %-3d | %-7s | %-4s | %9lu | %5lu | %5.1f%%\r\n",
+            printf("%-16s| %-3d | %-7s | %-4s | %9lu | %5lu | 0x%08X | %-10s | %5.1f%%\r\n",
                    pxTaskStatusArray[x].pcTaskName,
                    (unsigned int)pxTaskStatusArray[x].uxCurrentPriority,
                    stateStr,
                    coreStr,
                    (unsigned long)pxTaskStatusArray[x].usStackHighWaterMark,
                    (unsigned long)stackTotal,
+                   (unsigned int)stackStart,
+                   memRegion,
                    stackUsedPercent);
 #endif
         }
