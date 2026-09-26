@@ -1,4 +1,4 @@
-﻿/*
+/*
  * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
@@ -136,17 +136,21 @@ void apl_console_init(void)
 
     /* Register commands */
     esp_console_register_help_command();
+#if (!defined(BOARD_CONFIG_ENABLE_SYSTEM_CMD) || BOARD_CONFIG_ENABLE_SYSTEM_CMD)
     register_system_common();
-#if SOC_LIGHT_SLEEP_SUPPORTED
+#endif
+#if SOC_LIGHT_SLEEP_SUPPORTED && (!defined(BOARD_CONFIG_ENABLE_SLEEP_CMD) || BOARD_CONFIG_ENABLE_SLEEP_CMD)
     register_system_light_sleep();
 #endif
-#if SOC_DEEP_SLEEP_SUPPORTED
+#if SOC_DEEP_SLEEP_SUPPORTED && (!defined(BOARD_CONFIG_ENABLE_SLEEP_CMD) || BOARD_CONFIG_ENABLE_SLEEP_CMD)
     register_system_deep_sleep();
 #endif
-#if (CONFIG_ESP_WIFI_ENABLED || CONFIG_ESP_HOST_WIFI_ENABLED)
+#if (CONFIG_ESP_WIFI_ENABLED || CONFIG_ESP_HOST_WIFI_ENABLED) && (!defined(BOARD_CONFIG_ENABLE_WIFI_CMD) || BOARD_CONFIG_ENABLE_WIFI_CMD)
     register_wifi();
 #endif
+#if (!defined(BOARD_CONFIG_ENABLE_NVS_CMD) || BOARD_CONFIG_ENABLE_NVS_CMD)
     register_nvs();
+#endif
 
     printf("\n"
            "This is an example of ESP-IDF console component.\n"
