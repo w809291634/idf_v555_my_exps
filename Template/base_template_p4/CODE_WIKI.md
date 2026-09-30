@@ -278,6 +278,7 @@ set(DRV_DIR "$ENV{IDF_PATH}/examples/idf_v555_my_exps/common/DRV")
 | `CONFIG_FREERTOS_USE_TRACE_FACILITY` / `USE_STATS_FORMATTING_FUNCTIONS` | y | `tasks/ps` 命令依赖 |
 | `CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS` | y | CPU 使用率统计依赖 |
 | `CONFIG_ESP_CONSOLE_SECONDARY_NONE` | y | 关闭 USB 第二控制台 |
+| `CONFIG_ESP_CONSOLE_UART_CUSTOM` | y | 控制台使用自定义 UART（GPIO37/38，961200 baud，参考 p4_touch 板卡） |
 
 > 控制台命令开关（`board_config.h`）：`BOARD_CONFIG_ENABLE_SYSTEM_CMD=1`（保留基础命令），
 > `BOARD_CONFIG_ENABLE_{SLEEP,WIFI,NVS}_CMD=0`（默认关闭，按需置 1）。
@@ -286,11 +287,15 @@ set(DRV_DIR "$ENV{IDF_PATH}/examples/idf_v555_my_exps/common/DRV")
 
 ### 6.3 分区表（partitions_example.csv）
 
+> ⚠️ ESP32-P4 的 bootloader 较大（约 0x60C0，超过默认 0x6000 上限），
+> 分区表偏移必须设置为 `0x10000`（`CONFIG_PARTITION_TABLE_OFFSET=0x10000`），否则构建报
+> "Bootloader binary size too large" 错误。
+
 | 分区 | 类型/子类型 | 偏移 | 大小 |
 | ---- | ---- | ---- | ---- |
-| `nvs` | data/nvs | 0x9000 | 0x6000 |
-| `phy_init` | data/phy | 0xf000 | 0x1000 |
-| `factory` | app/factory | 0x10000 | 2M |
+| `nvs` | data/nvs | 0x11000 | 0x6000 |
+| `phy_init` | data/phy | 自动（紧跟 nvs） | 0x1000 |
+| `factory` | app/factory | 自动 | 2M |
 
 > ⚠️ `README.md` 提示：若启用 `CONSOLE_STORE_HISTORY`，需要额外添加 `storage, data, fat, , 1M` 分区，
 > 但当前 `partitions_example.csv` **并未包含**该分区。启用历史存储前需自行补充分区。
@@ -332,7 +337,7 @@ idf.py build
 idf.py menuconfig        # 可选：调整 APP_ENABLE_CONSOLE / CONSOLE_STORE_HISTORY 等
 idf.py build             # 编译
 idf.py -p COMx flash     # 烧录（按实际串口修改 COMx）
-idf.py -p COMx monitor   # 串口监视（默认 115200）
+idf.py -p COMx monitor   # 串口监视（板卡 UART：GPIO37/38，波特率 961200）
 ```
 
 > 若启用 `CONSOLE_STORE_HISTORY`，请先按 README 在 `partitions_example.csv` 中补 `storage`(FAT) 分区。
