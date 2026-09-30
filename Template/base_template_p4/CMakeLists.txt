@@ -21,8 +21,8 @@ function(add_component_dirs_from root_dir)
 endfunction()
 
 # 使用函数添加 APL 和 DRV 下的所有子目录
-set(APL_DIR "$ENV{IDF_PATH}/examples/idf_v551_my_exps/common/APL")
-set(DRV_DIR "$ENV{IDF_PATH}/examples/idf_v551_my_exps/common/DRV")
+set(APL_DIR "$ENV{IDF_PATH}/examples/idf_v555_my_exps/common/APL")
+set(DRV_DIR "$ENV{IDF_PATH}/examples/idf_v555_my_exps/common/DRV")
 add_component_dirs_from(${APL_DIR})
 add_component_dirs_from(${DRV_DIR})
 
