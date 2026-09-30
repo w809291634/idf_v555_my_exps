@@ -1,0 +1,12 @@
+## IDF Component Manager Manifest File
+## ESP32-P4 无原生 WiFi 外设：通过托管组件 esp_wifi_remote + esp_hosted
+## 使用板载协处理器提供 WiFi，上层仍使用标准 esp_wifi API。
+## 参考：examples/idf_v555_my_exps/p4_touch_lcd4_3_exp/examples/04_wifistation/main/idf_component.yml
+dependencies:
+  espressif/esp_wifi_remote:
+    version: "0.14.*"
+  espressif/esp_hosted:
+    version: "1.4.*"
+  ## Required IDF version
+  idf:
+    version: ">=5.5.0"

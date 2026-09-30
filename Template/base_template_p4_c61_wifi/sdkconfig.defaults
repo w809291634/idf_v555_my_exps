@@ -26,7 +26,7 @@ CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_example.csv"
 CONFIG_PARTITION_TABLE_FILENAME="partitions_example.csv"
-# ESP32-P4 bootloader 较大，需增大分区表偏移
+# ESP32-P4 bootloader is larger, so increase the partition table offset
 CONFIG_PARTITION_TABLE_OFFSET=0x10000
 
 # Enable FreeRTOS stats formatting functions, needed for 'tasks' command
@@ -38,10 +38,17 @@ CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
 # On chips with USB serial, disable secondary console which does not make sense when using console component
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 
-# 控制台 UART：参考 p4_touch_lcd4_3_exp 板卡（GPIO37/38，961200 baud）
+# Console UART: same as the p4_touch_lcd4_3_exp board (GPIO37/38, 961200 baud)
 CONFIG_ESP_CONSOLE_UART_DEFAULT is not set
 CONFIG_ESP_CONSOLE_UART_CUSTOM=y
 CONFIG_ESP_CONSOLE_UART_CUSTOM_NUM_0=y
 CONFIG_ESP_CONSOLE_UART_TX_GPIO=37
 CONFIG_ESP_CONSOLE_UART_RX_GPIO=38
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=961200
+
+# WiFi: ESP32-P4 has no native WiFi peripheral; WiFi is provided by the onboard
+# co-processor (SDIO) through esp_wifi_remote + esp_hosted (see main/idf_component.yml).
+# Note: ESP_WIFI_REMOTE_ENABLED and ESP_HOST_WIFI_ENABLED are mutually exclusive.
+#       Enabling the latter forcibly disables esp_wifi_remote, so ESP_HOST_WIFI_ENABLED
+#       must not be set here.
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y

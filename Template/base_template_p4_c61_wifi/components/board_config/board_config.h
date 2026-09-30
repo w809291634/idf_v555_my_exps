@@ -41,7 +41,7 @@
 *********************************************************************************************/
 #define BOARD_CONFIG_ENABLE_SYSTEM_CMD                 1
 #define BOARD_CONFIG_ENABLE_SLEEP_CMD                  0   // light_sleep / deep_sleep
-#define BOARD_CONFIG_ENABLE_WIFI_CMD                   0   // wifi（ESP32-P4 无 WiFi 外设）
+#define BOARD_CONFIG_ENABLE_WIFI_CMD                   0   // 共享组件的 wifi 命令（本工程在 main 层自行实现：scan/join/disconnect/autoreconnect，避免重复初始化 WiFi 协议栈）
 #define BOARD_CONFIG_ENABLE_NVS_CMD                    0   // nvs set/get/erase/list
 
 

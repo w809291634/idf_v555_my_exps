@@ -13,6 +13,7 @@ get-started/**/log
 
 # lock files for examples and components
 dependencies.lock
+managed_components/
 
 /SmartCar_wifi_camera
 /SmartCar_wifi_gamepad

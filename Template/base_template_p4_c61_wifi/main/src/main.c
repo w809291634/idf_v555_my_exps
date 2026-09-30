@@ -7,6 +7,7 @@
 #include "drv_led.h"
 #include "apl_console.h"
 #include "apl_utility.h"
+#include "app_wifi.h"
 
 #define DBG_TAG           "main"
 //#define DBG_LVL           DBG_INFO
@@ -18,6 +19,7 @@ void app_init(void)
 {
     app_info_dump();
     led_pin_init();
+    app_wifi_register_console();
 }
 
 void app_main(void)
