@@ -1,12 +1,70 @@
 ## IDF Component Manager Manifest File
-## ESP32-P4 无原生 WiFi 外设：通过托管组件 esp_wifi_remote + esp_hosted
-## 使用板载协处理器提供 WiFi，上层仍使用标准 esp_wifi API。
-## 参考：examples/idf_v555_my_exps/p4_touch_lcd4_3_exp/examples/04_wifistation/main/idf_component.yml
+##
+## Trimmed to the components this project actually builds:
+##   the ESP32-P4 runs the voice assistant without a screen, so the LCD panel and
+##   touch drivers, the OLED driver and the camera stack of the upstream boards
+##   are not pulled in. WiFi goes through the onboard ESP32-C6 (esp_hosted).
+##
+## Note: keeping this list short is also what holds the compiler command line
+## under the 32767 character limit enforced by Windows CreateProcess - the full
+## upstream list pushes it over at this project's path depth.
 dependencies:
-  espressif/esp_wifi_remote:
-    version: "0.14.*"
+  ## Network: WiFi provisioning + P4 <-> onboard C6 hosted link
+  78/esp-wifi-connect: ~3.2.2
   espressif/esp_hosted:
-    version: "1.4.*"
+    version: 2.0.17
+    rules:
+    - if: target in [esp32p4]
+  espressif/esp_wifi_remote:
+    version: '*'
+    rules:
+    - if: target in [esp32p4]
+
+  ## Network abstraction layer used by xiaozhi's board.h (http.h, web_socket.h,
+  ## mqtt.h, udp.h). uart-eth-modem and iot_usbh_rndis are the uplinks of the
+  ## cellular / RNDIS paths that come with it.
+  78/esp-ml307: ~3.6.5
+  78/uart-eth-modem:
+    version: ~0.4.2
+    rules:
+    - if: target not in [esp32]
+  espressif/iot_usbh_rndis:
+    version: ^0.3.1
+    rules:
+    - if: target in [esp32p4]
+
+  ## Audio: codec abstraction, ESP-SR wake word / AFE
+  espressif/esp_codec_dev: ~1.5.6
+  espressif/esp_audio_codec: ~2.5.0
+  espressif/esp_audio_effects: ~1.3.0
+  espressif/esp-sr: ~2.4.6
+
+  ## UI: LVGL + fonts + assets. There is no panel, but assets.cc still runs the
+  ## LVGL asset strategy (fonts, themes, emoji collections), so these stay.
+  lvgl/lvgl: ~9.5.0
+  esp_lvgl_port: ~2.8.0
+  78/xiaozhi-fonts: ~1.6.0
+  espressif/esp_mmap_assets: ^1.3.2
+  espressif/esp_new_jpeg: ^0.6.1
+
+  ## Camera / video. The camera board class is not built, but the component still
+  ## provides linux/videodev2.h and the esp_imgfx headers used by the JPEG helpers
+  ## in display/lvgl_display/jpg.
+  espressif/esp_video:
+    version: ==1.3.1   # for compatibility. update version may need to modify this project code.
+    rules:
+    - if: target in [esp32p4]
+
+  ## Emote / image effects, used by display/emote_display.cc and lvgl_display/jpg
+  espressif2022/image_player: ^1.1.1
+  espressif2022/esp_emote_expression: ^0.1.0
+  espressif/esp_image_effects:
+    version: ^1.0.1
+    rules:
+    - if: target not in [esp32]
+  ## Peripherals used by boards/common
+  espressif/button: ~4.2.0
+
   ## Required IDF version
   idf:
-    version: ">=5.5.0"
+    version: '>=5.5.2'

@@ -1,6 +1,68 @@
-CONFIG_SPIRAM=y
-CONFIG_SPIRAM_SPEED_200M=y
+# ESP32P4 + onboard ESP32-C6 (esp_hosted / esp_wifi_remote)
+# This file is applied after sdkconfig.defaults, so it wins on conflicts.
 
-# Enabling the following configurations can help increase the PCLK frequency in the case when
-# the Frame Buffer is allocated from the PSRAM and fetched by EDMA
-CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_IDF_TARGET_ESP32P4=y
+# Board ships with chip revision v3.2 -> revision >= v3.0 support only
+CONFIG_ESP32P4_REV_MIN_301=y
+
+# SPI flash
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHMODE="qio"
+
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
+
+## LOG
+CONFIG_LOG_COLORS=y
+
+# Increase main task stack size (xiaozhi needs the larger stack)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID=y
+
+# PSRAM tuning for the MIPI-DSI frame buffer
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_SPIRAM_MEMTEST=n
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+
+# ESP-Hosted slave is the onboard ESP32-C6
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+
+# Wake word model ("你好小智")
+CONFIG_SR_WN_WN9_NIHAOXIAOZHI_TTS=y
+
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# On chips with USB serial, disable secondary console which does not make sense when using console component
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# Console UART: same as the p4_touch_lcd4_3_exp board (GPIO37/38, 961200 baud)
+CONFIG_ESP_CONSOLE_UART_DEFAULT=n
+CONFIG_ESP_CONSOLE_UART_CUSTOM=y
+CONFIG_ESP_CONSOLE_UART_CUSTOM_NUM_0=y
+CONFIG_ESP_CONSOLE_UART_TX_GPIO=37
+CONFIG_ESP_CONSOLE_UART_RX_GPIO=38
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=961200
+
+# WiFi: ESP32-P4 has no native WiFi peripheral; WiFi is provided by the onboard
+# co-processor (SDIO) through esp_wifi_remote + esp_hosted (see main/idf_component.yml).
+# Note: ESP_WIFI_REMOTE_ENABLED and ESP_HOST_WIFI_ENABLED are mutually exclusive.
+#       Enabling the latter forcibly disables esp_wifi_remote, so ESP_HOST_WIFI_ENABLED
+#       must not be set here.
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y
+
+# ---------------------------------------------------------------------------
+# Board overrides, taken from the "-p4x" build of the xiaozhi board config.json
+# (boards/waveshare/esp32-p4-wifi6-touch-lcd). Kept last on purpose:
+# sdkconfig.defaults must not win over these.
+# ---------------------------------------------------------------------------
+CONFIG_BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_4_3=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0
+CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y
+CONFIG_USE_WECHAT_MESSAGE_STYLE=n
+CONFIG_USE_DEVICE_AEC=y

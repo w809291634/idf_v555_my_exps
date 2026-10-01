@@ -3,3 +3,7 @@ menu "Application Configuration"
     orsource "$IDF_PATH/examples/idf_v555_my_exps/common/APL/apl_console/Kconfig.apl_console"
 
 endmenu
+
+# The xiaozhi-esp32 menus (board type, flash assets, language, wake word, ...) are
+# referenced in place, they are not copied into this project.
+orsource "$IDF_PATH/examples/idf_v555_my_exps/Template/base_tem_p4_c61_wifi_xiaozhi/xiaozhi-esp32/main/Kconfig.projbuild"

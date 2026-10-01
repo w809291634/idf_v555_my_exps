@@ -2,6 +2,9 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
+# Required by the referenced xiaozhi-esp32 sources
+add_compile_options(-Wno-missing-field-initializers)
+
 # 定义一个函数，用于将指定目录下的所有子目录加入 EXTRA_COMPONENT_DIRS
 function(add_component_dirs_from root_dir)
     if(EXISTS "${root_dir}")
@@ -32,4 +35,9 @@ add_component_dirs_from(${DRV_DIR})
 # set(COMPONENTS main esp_psram)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
+# "Trim" the build. Include the minimal set of components, main, and anything it depends on.
+idf_build_set_property(MINIMAL_BUILD ON)
+
+set(PROJECT_VER "2.3.0")
 project(base_template)
