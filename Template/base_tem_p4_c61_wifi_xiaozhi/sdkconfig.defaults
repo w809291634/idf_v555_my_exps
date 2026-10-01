@@ -1,0 +1,54 @@
+# ESP32P4
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_IDF_TARGET_ESP32P4=y
+CONFIG_ESP32P4_REV_MIN_301=y
+
+# SPI flash
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHMODE="qio"
+
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
+
+## LOG
+# Reduce bootloader log verbosity
+# CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+# CONFIG_BOOTLOADER_LOG_LEVEL=2
+# CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_LOG_COLORS=y
+
+# Increase main task stack size
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=7168
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
+
+# Enable filesystem
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_example.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions_example.csv"
+# ESP32-P4 bootloader is larger, so increase the partition table offset
+CONFIG_PARTITION_TABLE_OFFSET=0x10000
+
+# Enable FreeRTOS stats formatting functions, needed for 'tasks' command
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+CONFIG_FREERTOS_USE_STATS_FORMATTING_FUNCTIONS=y
+# Enable CPU usage
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
+
+# On chips with USB serial, disable secondary console which does not make sense when using console component
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# Console UART: same as the p4_touch_lcd4_3_exp board (GPIO37/38, 961200 baud)
+CONFIG_ESP_CONSOLE_UART_DEFAULT is not set
+CONFIG_ESP_CONSOLE_UART_CUSTOM=y
+CONFIG_ESP_CONSOLE_UART_CUSTOM_NUM_0=y
+CONFIG_ESP_CONSOLE_UART_TX_GPIO=37
+CONFIG_ESP_CONSOLE_UART_RX_GPIO=38
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=961200
+
+# WiFi: ESP32-P4 has no native WiFi peripheral; WiFi is provided by the onboard
+# co-processor (SDIO) through esp_wifi_remote + esp_hosted (see main/idf_component.yml).
+# Note: ESP_WIFI_REMOTE_ENABLED and ESP_HOST_WIFI_ENABLED are mutually exclusive.
+#       Enabling the latter forcibly disables esp_wifi_remote, so ESP_HOST_WIFI_ENABLED
+#       must not be set here.
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y

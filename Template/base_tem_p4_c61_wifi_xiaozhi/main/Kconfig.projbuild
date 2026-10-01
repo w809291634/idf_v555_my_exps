@@ -1,0 +1,5 @@
+menu "Application Configuration"
+
+    orsource "$IDF_PATH/examples/idf_v555_my_exps/common/APL/apl_console/Kconfig.apl_console"
+
+endmenu
