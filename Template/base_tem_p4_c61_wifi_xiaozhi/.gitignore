@@ -1,0 +1,14 @@
+.config
+*.o
+*.pyc
+
+get-started/**/CMakeFiles
+get-started/**/log
+
+# Example project files
+**/build/
+**/build_*_*/
+**/sdkconfig
+**/sdkconfig.old
+
+!/xiaozhi_esp32
