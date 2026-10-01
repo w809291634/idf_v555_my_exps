@@ -35,66 +35,71 @@ set(DEFAULT_EMOJI_COLLECTION twemoji_64)
 # Sources
 # ---------------------------------------------------------------------------
 set(SOURCES
-    # Assistant core
-    "${XZ_MAIN}/application.cc"
-    "${XZ_MAIN}/assets.cc"
+    # --- assistant core -----------------------------------------------------
+    # Everything hangs off Application::GetInstance() in src/app_xiaozhi.cc
+    "${XZ_MAIN}/application.cc"        # Application::Run(), state machine wiring
+    "${XZ_MAIN}/assets.cc"             # Assets::GetInstance() - wake word models
     "${XZ_MAIN}/device_state_machine.cc"
-    "${XZ_MAIN}/mcp_server.cc"
-    "${XZ_MAIN}/ota.cc"
-    "${XZ_MAIN}/settings.cc"
-    "${XZ_MAIN}/system_info.cc"
-    # Protocols (both can be selected)
+    "${XZ_MAIN}/mcp_server.cc"         # McpServer used by application.cc
+    "${XZ_MAIN}/ota.cc"                # firmware update + activation
+    "${XZ_MAIN}/settings.cc"           # NVS-backed Settings used everywhere
+    "${XZ_MAIN}/system_info.cc"        # device JSON / user agent
+
+    # --- protocols ----------------------------------------------------------
+    # Both are registered; the active one is chosen from settings at runtime
     "${XZ_MAIN}/protocols/protocol.cc"
     "${XZ_MAIN}/protocols/websocket_protocol.cc"
     "${XZ_MAIN}/protocols/mqtt_protocol.cc"
-    # Audio: service, ogg demuxer, ES8311 + ES7210 codec, ESP-SR wake word
-    "${XZ_MAIN}/audio/audio_codec.cc"
-    "${XZ_MAIN}/audio/audio_debugger.cc"
-    "${XZ_MAIN}/audio/audio_service.cc"
-    "${XZ_MAIN}/audio/demuxer/ogg_demuxer.cc"
-    "${XZ_MAIN}/audio/codecs/box_audio_codec.cc"
-    # Board support: base class, WiFi board, BOOT button, backlight base class
-    # (Backlight::SetBrightness is referenced by mcp_server.cc)
-    "${XZ_MAIN}/boards/common/board.cc"
-    "${XZ_MAIN}/boards/common/wifi_board.cc"
-    "${XZ_MAIN}/boards/common/button.cc"
-    "${XZ_MAIN}/boards/common/backlight.cc"
-    # Display glue that cannot be dropped from this side: board.cc,
-    # assets.cc and mcp_server.cc use dynamic_cast<> on these classes, which
-    # keeps their typeinfo - and with it the whole LVGL display stack - in the
-    # link even though the board owns no panel.
+
+    # --- audio --------------------------------------------------------------
+    "${XZ_MAIN}/audio/audio_codec.cc"          # AudioCodec base class
+    "${XZ_MAIN}/audio/audio_debugger.cc"       # AudioService owns an AudioDebugger
+    "${XZ_MAIN}/audio/audio_service.cc"        # AudioService, used by application.cc
+    "${XZ_MAIN}/audio/demuxer/ogg_demuxer.cc"  # decodes the embedded .ogg sounds
+    "${XZ_MAIN}/audio/codecs/box_audio_codec.cc"  # ES8311 + ES7210, our board codec
+    "${XZ_MAIN}/audio/engines/afe_audio_engine.cc"        # ESP-SR AFE
+    "${XZ_MAIN}/audio/wake_words/custom_wake_word.cc"     # wake word
+    "${XZ_MAIN}/audio/wake_words/wake_word_audio_cache.cc"
+
+    # --- board --------------------------------------------------------------
+    # src/board_p4_audio.cc derives from WifiBoard and uses Button
+    "${XZ_MAIN}/boards/common/board.cc"       # Board base class + NoLed/NoDisplay
+    "${XZ_MAIN}/boards/common/wifi_board.cc"  # WifiBoard base class
+    "${XZ_MAIN}/boards/common/button.cc"      # BOOT button
+    "${XZ_MAIN}/boards/common/backlight.cc"   # Backlight::SetBrightness is called
+                                              # by mcp_server.cc (tool registration)
+
+    # --- display: linked, but never instantiated -----------------------------
+    # The board owns no panel. These files stay because three files of the
+    # referenced tree keep the classes alive through dynamic_cast<>, and the
+    # typeinfo is emitted together with the vtable of each class:
+    #   boards/common/board.cc : dynamic_cast<OledDisplay*>       -> oled_display
+    #   assets.cc              : dynamic_cast<LcdDisplay*>        -> lcd_display
+    #                            EmoteStrategy (dynamic_cast<emote::EmoteDisplay*>)
+    #   mcp_server.cc          : dynamic_cast<LvglDisplay*>       -> lvgl_display
+    # display/display.cc is needed regardless: it holds Display::SetStatus() and
+    # friends, which NoDisplay falls back to.
     "${XZ_MAIN}/display/display.cc"
     "${XZ_MAIN}/display/lcd_display.cc"
     "${XZ_MAIN}/display/oled_display.cc"
     "${XZ_MAIN}/display/emote_display.cc"
     "${XZ_MAIN}/display/lvgl_display/lvgl_display.cc"
-    "${XZ_MAIN}/display/lvgl_display/lvgl_theme.cc"
-    "${XZ_MAIN}/display/lvgl_display/lvgl_font.cc"
-    "${XZ_MAIN}/display/lvgl_display/lvgl_image.cc"
-    "${XZ_MAIN}/display/lvgl_display/emoji_collection.cc"
-    "${XZ_MAIN}/display/lvgl_display/gif/lvgl_gif.cc"
+    "${XZ_MAIN}/display/lvgl_display/lvgl_theme.cc"        # LvglThemeManager, used
+    "${XZ_MAIN}/display/lvgl_display/lvgl_font.cc"         # by assets.cc's
+    "${XZ_MAIN}/display/lvgl_display/lvgl_image.cc"        # LvglStrategy
+    "${XZ_MAIN}/display/lvgl_display/emoji_collection.cc"  # EmojiCollection::AddEmoji
+    "${XZ_MAIN}/display/lvgl_display/gif/lvgl_gif.cc"      # used by lcd_display.cc
     "${XZ_MAIN}/display/lvgl_display/gif/gifdec.c"
-    "${XZ_MAIN}/display/lvgl_display/jpg/image_to_jpeg.cpp"
-    "${XZ_MAIN}/display/lvgl_display/jpg/jpeg_to_image.c"
-    # This project
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/app_xiaozhi.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/board_p4_audio.cc"
-)
+    # display/lvgl_display/jpg is intentionally not built: its JPEG encoder is
+    # only called from LvglDisplay::SnapshotToJpeg(), which compiles to nothing
+    # because CONFIG_LV_USE_SNAPSHOT is off. The directory stays in
+    # INCLUDE_DIRS for the header included by lvgl_display.cc.
 
-# Wake word / AFE engine, one per chip family
-if(CONFIG_IDF_TARGET_ESP32)
-    list(APPEND SOURCES
-        "${XZ_MAIN}/audio/engines/lite_audio_engine.cc"
-        "${XZ_MAIN}/audio/wake_words/esp_wake_word.cc"
-    )
-else()
-    list(APPEND SOURCES
-        "${XZ_MAIN}/audio/engines/afe_audio_engine.cc"
-        "${XZ_MAIN}/audio/wake_words/custom_wake_word.cc"
-        "${XZ_MAIN}/audio/wake_words/wake_word_audio_cache.cc"
-    )
-endif()
+    # --- this project --------------------------------------------------------
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"             # entry point + console
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/app_xiaozhi.cc"     # starts Application
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/board_p4_audio.cc"  # the board itself
+)
 
 set(INCLUDE_DIRS "${XZ_MAIN}" "${CMAKE_CURRENT_SOURCE_DIR}/include" "${PROJECT_DIR}" "${XZ_MAIN}/display" "${XZ_MAIN}/display/lvgl_display" "${XZ_MAIN}/display/lvgl_display/jpg" "${XZ_MAIN}/audio" "${XZ_MAIN}/audio/demuxer" "${XZ_MAIN}/protocols")
 set(MAIN_PRIV_INCLUDE_DIRS "${XZ_MAIN}/boards/common")
