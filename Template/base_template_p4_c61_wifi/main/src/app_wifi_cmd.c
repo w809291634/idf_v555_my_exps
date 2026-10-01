@@ -546,4 +546,14 @@ void app_wifi_register_console(void)
     };
 
     ESP_ERROR_CHECK(esp_console_cmd_register(&wifi_cmd));
+
+    /* top level alias, so that 'ping <host>' works without the 'wifi' prefix */
+    const esp_console_cmd_t ping_cmd = {
+        .command = "ping",
+        .help = "ICMP echo to a host, same as 'wifi ping'",
+        .hint = "<host> [--count=<n>] [--timeout=<ms>]",
+        .func = &cmd_wifi_ping,
+        /* argv passed to the function has the same shape as 'wifi ping ...' */
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&ping_cmd));
 }
