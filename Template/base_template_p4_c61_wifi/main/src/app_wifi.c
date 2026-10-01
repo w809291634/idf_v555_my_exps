@@ -11,6 +11,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "nvs.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_netif.h"
@@ -22,13 +23,18 @@
 
 #define WIFI_MAXIMUM_RETRY      (5)         // max retry count of auto reconnect
 
+/* NVS namespace/key that persists the auto connect setting across a reboot */
+#define WIFI_NVS_NAMESPACE      "app_wifi"
+#define WIFI_NVS_KEY_AUTOCONN   "autoconn"
+
 /* FreeRTOS event group: connected / failed */
 static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT      BIT0
 #define WIFI_FAIL_BIT           BIT1
 
 static bool s_initialized = false;          // is the WiFi stack initialized
-static bool s_auto_reconnect = true;        // auto reconnect switch
+static bool s_auto_reconnect = true;        // auto connect on boot, persisted in NVS
+static bool s_auto_reconnect_loaded = false;// is the setting already read from NVS
 static int  s_retry_num = 0;
 static esp_netif_t *s_sta_netif = NULL;
 
@@ -51,6 +57,42 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
+}
+
+/** Read the auto connect setting from NVS once. A missing key keeps the default. */
+static void wifi_autoconn_load(void)
+{
+    if (s_auto_reconnect_loaded) {
+        return;
+    }
+    s_auto_reconnect_loaded = true;
+
+    nvs_handle_t handle;
+    if (nvs_open(WIFI_NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) {
+        return;                             // nothing saved yet, keep the default
+    }
+    uint8_t value = 1;
+    if (nvs_get_u8(handle, WIFI_NVS_KEY_AUTOCONN, &value) == ESP_OK) {
+        s_auto_reconnect = (value != 0);
+    }
+    nvs_close(handle);
+}
+
+/** Store the auto connect setting into NVS */
+static void wifi_autoconn_save(void)
+{
+    nvs_handle_t handle;
+    if (nvs_open(WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) {
+        log_w("open nvs failed, auto connect setting is not saved");
+        return;
+    }
+    uint8_t value = s_auto_reconnect ? 1 : 0;
+    if (nvs_set_u8(handle, WIFI_NVS_KEY_AUTOCONN, value) == ESP_OK) {
+        nvs_commit(handle);
+    } else {
+        log_w("save auto connect setting failed");
+    }
+    nvs_close(handle);
 }
 
 bool app_wifi_stack_init(void)
@@ -79,9 +121,9 @@ bool app_wifi_stack_init(void)
                                                         &wifi_event_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                                         &wifi_event_handler, NULL, NULL));
-    /* Do not store SSID/password in NVS, so that the device does not reconnect
-       to the previous AP automatically after a reboot. */
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    /* Keep SSID/password in NVS so that the station can be restored at boot by
+       app_wifi_autoconnect_start() */
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
 
@@ -134,12 +176,48 @@ esp_netif_t *app_wifi_sta_netif(void)
     return s_sta_netif;
 }
 
+bool app_wifi_autoconnect_start(void)
+{
+    wifi_autoconn_load();
+    if (!s_auto_reconnect) {
+        /* Auto connect is off: keep the stack down until a command needs it */
+        log_i("auto connect off, wifi stays off until the first command");
+        return false;
+    }
+
+    if (!app_wifi_stack_init()) {
+        return false;
+    }
+
+    /* The station config was saved in NVS by the previous 'wifi join' */
+    wifi_config_t wifi_config = { 0 };
+    if (esp_wifi_get_config(WIFI_IF_STA, &wifi_config) != ESP_OK ||
+        wifi_config.sta.ssid[0] == '\0') {
+        log_i("no saved AP, use 'wifi join <ssid> [<pass>]' to connect");
+        return false;
+    }
+
+    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
+    s_retry_num = 0;
+
+    esp_err_t err = esp_wifi_connect();
+    if (err != ESP_OK) {
+        log_w("auto connect to '%s' failed: %s", (char *)wifi_config.sta.ssid, esp_err_to_name(err));
+        return false;
+    }
+    log_i("auto connecting to '%s' ...", (char *)wifi_config.sta.ssid);
+    return true;
+}
+
 void app_wifi_set_auto_reconnect(bool enable)
 {
     s_auto_reconnect = enable;
+    s_auto_reconnect_loaded = true;
+    wifi_autoconn_save();
 }
 
 bool app_wifi_get_auto_reconnect(void)
 {
+    wifi_autoconn_load();
     return s_auto_reconnect;
 }

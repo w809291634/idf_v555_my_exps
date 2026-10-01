@@ -32,12 +32,25 @@ bool app_wifi_join(const char *ssid, const char *pass, int timeout_ms);
 esp_netif_t *app_wifi_sta_netif(void);
 
 /**
- * @brief Enable/disable auto reconnect after a disconnect
+ * @brief Connect back to the last AP at boot, using the SSID/password saved in NVS
+ *
+ * Call once from app_init(). When auto connect is disabled the WiFi stack is left
+ * down, so that no radio current is drawn until the first console command.
+ *
+ * @return true when a connection attempt was started
+ */
+bool app_wifi_autoconnect_start(void);
+
+/**
+ * @brief Enable/disable auto connect, the setting is saved in NVS
+ *
+ * 'on'  : connect back to the last AP on the next boot
+ * 'off' : keep the WiFi stack down until a console command is used
  */
 void app_wifi_set_auto_reconnect(bool enable);
 
 /**
- * @brief Get the auto reconnect setting
+ * @brief Get the auto connect setting
  */
 bool app_wifi_get_auto_reconnect(void);
 
@@ -55,7 +68,8 @@ bool app_wifi_get_auto_reconnect(void);
  *   wifi ping <host> [--count=<n>] [--timeout=<ms>]
  *   wifi dns <host>
  *
- * The WiFi stack is initialized lazily on the first use of a command.
+ * The WiFi stack is initialized lazily on the first use of a command, or at boot
+ * by app_wifi_autoconnect_start() when auto connect is enabled.
  * Note: NVS is already initialized by hw_board_init(), no need to handle it here.
  */
 void app_wifi_register_console(void);

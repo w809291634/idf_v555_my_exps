@@ -178,7 +178,7 @@ static int cmd_wifi_autoreconnect(int argc, char **argv)
         log_e("invalid argument '%s', please use on/off", state);
         return 1;
     }
-    log_i("auto reconnect %s", app_wifi_get_auto_reconnect() ? "on" : "off");
+    log_i("auto reconnect %s, saved in NVS", app_wifi_get_auto_reconnect() ? "on" : "off");
     return 0;
 }
 
@@ -366,9 +366,12 @@ static int cmd_wifi_ping(int argc, char **argv)
         log_e("unknown host '%s'", ping_args.host->sval[0]);
         return 1;
     }
-    ip_addr_t target;
+    /* The type field must be initialized: esp_ping_new_session() branches on
+       IP_IS_V4()/IP_IS_V6() to pick the socket family and the ICMP packet type */
+    ip_addr_t target = { 0 };
     struct in_addr addr4 = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
     inet_addr_to_ip4addr(ip_2_ip4(&target), &addr4);
+    IP_SET_TYPE_VAL(target, IPADDR_TYPE_V4);
     freeaddrinfo(res);
 
     esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
@@ -449,7 +452,7 @@ static const char WIFI_USAGE[] =
     "  wifi scan                                        scan and list nearby APs\n"
     "  wifi join <ssid> [<pass>] [--timeout=<ms>]       join AP as station (default 10000 ms)\n"
     "  wifi disconnect                                  disconnect from the current AP\n"
-    "  wifi autoreconnect <on|off>                      enable/disable auto reconnect\n"
+    "  wifi autoreconnect <on|off>                      auto connect on boot, saved in NVS\n"
     "  wifi status                                      show link/IP/DNS status\n"
     "  wifi stats                                       dump WiFi statistic counters\n"
     "  wifi slave [reset]                               show co-processor version, or reset it\n"

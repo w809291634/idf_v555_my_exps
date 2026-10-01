@@ -20,6 +20,8 @@ void app_init(void)
     app_info_dump();
     led_pin_init();
     app_wifi_register_console();
+    /* Connect back to the last AP when auto connect is enabled */
+    app_wifi_autoconnect_start();
 }
 
 void app_main(void)
