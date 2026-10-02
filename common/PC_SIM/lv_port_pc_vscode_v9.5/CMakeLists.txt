@@ -134,6 +134,9 @@ set(LV_CONF_PATH "${LVGL_CONF_FILE}" CACHE PATH "Shared LVGL config header")
 # 内核内置 ThorVG 是条 option、默认 ON（与 lv_conf.h 里的 0 无关），必须在下面
 # add_subdirectory 之前关掉，否则 PC 上编不过。详见 P-0076
 set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "关掉内核内置的 ThorVG(PC 上编不过)")
+# 官方 examples / demos 几百个 .c，仿真一个都不用，白编还把字体宏警告刷满屏（P-0078）
+set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "仿真不需要 LVGL 官方 examples")
+set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "仿真不需要 LVGL 官方 demos")
 add_subdirectory(${APL_LVGL_DIR} ${CMAKE_BINARY_DIR}/apl_lvgl_build)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 # lvgl 用 file(GLOB_RECURSE src/*.c src/*.cpp) 把 src/libs/thorvg/*.cpp 一并收进
