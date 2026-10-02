@@ -190,6 +190,8 @@ target_include_directories(main PRIVATE
     ${UI_DIR}
     ${NATIVE_DIR}
     ${SIM_MAIN_DIR})
+# 内核 SDL 驱动头（lv_sdl_window.h）——真鼠标事件要拿 SDL_Window* 换 windowID
+target_include_directories(main PRIVATE ${APL_LVGL_DIR}/src/drivers/sdl)
 
 # Only link freertos_config if the FreeRTOS directory exists
 if(USE_FREERTOS)
