@@ -1,0 +1,13 @@
+# Ignore build folder
+build/
+build_dbg/
+build_rel/
+bin/
+
+# Ignore UI folder, this should be commited in its own repository
+ui/
+
+# Ignore all dot folders, with below exceptions
+.*/
+# But keep .vscode/ tracked so project-level IDE settings are committed
+!.vscode/

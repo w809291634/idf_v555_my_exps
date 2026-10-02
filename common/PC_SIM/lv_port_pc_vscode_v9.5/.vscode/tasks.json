@@ -1,0 +1,115 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Debug",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["build_dbg"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "Build Release",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["build_rel"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Build and Run Debug",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["run_dbg"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Build and Run Release",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["run_rel"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        // {
+        //     "label": "Clean",
+        //     "type": "process",
+        //     "command": "build.bat",
+        //     "args": ["clean"],
+        //     "options": {
+        //         "cwd": "${workspaceFolder}"
+        //     }
+        // },
+        // {
+        //     "label": "Full Clean",
+        //     "type": "process",
+        //     "command": "build.bat",
+        //     "args": ["fullclean"],
+        //     "options": {
+        //         "cwd": "${workspaceFolder}"
+        //     }
+        // },
+        {
+            "label": "Clean Debug",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["clean_dbg"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Clean Release",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["clean_rel"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Full Clean Debug",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["fullclean_dbg"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Full Clean Release",
+            "type": "process",
+            "command": "build.bat",
+            "args": ["fullclean_rel"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ]
+}
