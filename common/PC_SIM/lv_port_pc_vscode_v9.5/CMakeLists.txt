@@ -5,37 +5,38 @@ cmake_minimum_required(VERSION 3.10)
 project(lvgl C CXX)
 
 # ============================================================================
-# 用户配置区（PC 仿真器复用：改这里即可指向你自己的目标工程）
-# ----------------------------------------------------------------------------
-# 1) 共享 UI 层:所有界面位于目标工程的 main/ui,PC 仿真器直接编译该目录。
-#    换工程时只需改这一行(指向该工程的 main/ui 目录)。
-#    命令行覆盖示例: cmake -DUI_DIR=/path/to/xxx/main/ui ..
-set(UI_DIR "${PROJECT_SOURCE_DIR}/../../../Template/spilcd_spiopt_lv_port_pc_tem_atks3/main/ui"
-    CACHE PATH "Shared UI source dir (point to target project's main/ui)")
+# ★ 用户配置区：整个仿真器只认下面这 8 项，其余都在文件下面
+# 换工程改第 1 行；换屏幕改 SIM_H_RES / SIM_V_RES。全部普通 set，命令行 -D 压不过。
+# ============================================================================
+set(TARGET_PROJ_DIR "D:/esp32_8266_files/esp-idf-v5.5.5_ol/examples/idf_v555_my_exps/p4_touch_lcd4_3_exp/lvgl_demo_ai/eez-test") # 目标工程根，其余路径都跟它拼
+set(APL_LVGL_DIR "D:/esp32_8266_files/esp-idf-v5.5.5_ol/examples/idf_v555_my_exps/common/APL/apl_lvgl_v9_4")                     # LVGL 内核全路径（手填，不做自动查找）
+set(SIM_H_RES 800)                                                                                                                # 仿真窗口宽 = 实际 LCD 宽
+set(SIM_V_RES 480)                                                                                                                # 仿真窗口高 = 实际 LCD 高
 
-# 界面源文件收集:递归编译 lv_ui/(纯 LVGL 界面) + lv_interface/(数据交互契约)。
-# 生成器产物(custom/guider/squareline)不参与编译,仅作参考。
+set(LVGL_CONF_FILE "${TARGET_PROJ_DIR}/design/sim_cmake/lv_conf.h")                                                               # 仿真专用 lv_conf.h
+set(UI_DIR "${TARGET_PROJ_DIR}/src/ui")                                                                                           # EEZ 生成代码（平铺 .c/.cpp）
+set(NATIVE_DIR "${TARGET_PROJ_DIR}/src/native")                                                                                    # 用户逻辑（排除 io_esp / test_native）
+set(SIM_MAIN_DIR "${TARGET_PROJ_DIR}/design/sim_cmake")                                                                            # 仿真入口 main.c + lv_conf.h
+# ============================================================================
+
+# 界面源文件：EEZ 平铺布局（src/ui 下直接是 .c/.cpp，不是 lv_ui/ 子目录）
 file(GLOB_RECURSE UI_SOURCES
-     "${UI_DIR}/lv_ui/*.c"
-     "${UI_DIR}/lv_interface/*.c")
+     "${UI_DIR}/*.c"
+     "${UI_DIR}/*.cpp")
+# 用户代码层：不收会链接期 undefined reference to get_var_*/set_var_*；排除 io_esp / test_native
+file(GLOB_RECURSE NATIVE_SOURCES
+     "${NATIVE_DIR}/*.c"
+     "${NATIVE_DIR}/*.cpp")
+list(FILTER NATIVE_SOURCES EXCLUDE REGEX "(io_esp|test_native)\\.(c|cpp)$")
 
-# 仿真器标志:定义后 lv_interface_sim.c 才会产出仿真数据(见该文件顶部注释)。
-# 真实硬件工程不定义此宏,由硬件后端接管数据。
+# 定义后 lv_interface_sim.c 才产出仿真数据；硬件工程不定义，由硬件后端接管
 option(LV_INTERFACE_SIM "Enable LVGL simulation data source (PC simulator)" ON)
 
-# 2) LVGL 配置:使用共享 UI 目录下的 lv_conf.h;分辨率/颜色深度在此适配
-#    (若目标工程用 Kconfig 而非 lv_conf.h,可改 LV_CONF_PATH 指向对应文件)
-set(LV_CONF_PATH "${UI_DIR}/lv_conf.h" CACHE PATH "Shared LVGL config header")
-
-# 3) 共享 LVGL 组件 apl_lvgl(一般无需修改)
-set(APL_LVGL_DIR "${PROJECT_SOURCE_DIR}/../../APL/apl_lvgl"
-    CACHE PATH "Shared LVGL component (apl_lvgl)")
-
-# 4) 仿真窗口分辨率:须与目标硬件 LCD 分辨率一致,保证两端同一布局。
-#    以编译宏 SIM_H_RES / SIM_V_RES 传给 main.c,源码无需写死。
-set(SIM_H_RES 320 CACHE STRING "Simulated window width (match target LCD)")
-set(SIM_V_RES 240 CACHE STRING "Simulated window height (match target LCD)")
-# ============================================================================
+# 内核有效性检查
+if(NOT EXISTS "${APL_LVGL_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "[sim] 配置区 APL_LVGL_DIR 无效: ${APL_LVGL_DIR}\n"
+        "      请在上面配置区写 set(APL_LVGL_DIR \"<到 apl_lvgl 的全路径>\")")
+endif()
 
 # Set the correct FreeRTOS port for your system (e.g., Posix for WSL)
 set(FREERTOS_PORT GCC_POSIX CACHE STRING "Port for FreeRTOS on Posix environment")
@@ -121,9 +122,37 @@ add_compile_definitions($<$<BOOL:${LV_INTERFACE_SIM}>:LV_INTERFACE_SIM=1>)
 # 直接指向共享组件 apl_lvgl:它会跳过自己的 project()(已在自身 CMakeLists
 # 加顶层检测),通过 env_support/cmake/custom.cmake 产出
 # lvgl / lvgl_examples / lvgl_demos / lvgl_thorvg 四个库供本工程链接
-set(APL_LVGL_DIR "${PROJECT_SOURCE_DIR}/../../APL/apl_lvgl")
+# 复用上面推导/手填的内核路径;写回 CACHE 是因为 apl_lvgl 是 add_subdirectory 子作用域,
+# 父作用域的普通变量传不进去(子作用域只读得到 CACHE)
+set(APL_LVGL_DIR "${APL_LVGL_DIR}" CACHE PATH "Shared LVGL component")
+# 把 LVGL_CONF_FILE 注进内核（apl_lvgl 是子作用域，普通变量传不进去 → 必须 CACHE，
+# 否则内核静默回落自带 lv_conf：ThorVG=1/FS_STDIO=1，PC 上编不过）；_DIR 置空，
+# 与 _PATH 并存内核会 FATAL。详见 P-0066
+set(LV_BUILD_CONF_DIR "" CACHE PATH "置空：与 _PATH 并存 apl_lvgl 会 FATAL")
+set(LV_BUILD_CONF_PATH "${LVGL_CONF_FILE}" CACHE PATH "Shared LVGL config header")
+set(LV_CONF_PATH "${LVGL_CONF_FILE}" CACHE PATH "Shared LVGL config header")
+# 内核内置 ThorVG 是条 option、默认 ON（与 lv_conf.h 里的 0 无关），必须在下面
+# add_subdirectory 之前关掉，否则 PC 上编不过。详见 P-0076
+set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "关掉内核内置的 ThorVG(PC 上编不过)")
 add_subdirectory(${APL_LVGL_DIR} ${CMAKE_BINARY_DIR}/apl_lvgl_build)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
+# lvgl 用 file(GLOB_RECURSE src/*.c src/*.cpp) 把 src/libs/thorvg/*.cpp 一并收进
+# lvgl target,而 thorvg 要的 config.h 只有它自己的构建才生成(全树都没有)→ 编必挂。
+# 本 UI 纯控件+内嵌图,不需要矢量图形,把这些源文件改成"只当头文件"跳过编译。
+# ★ 正则必须两种斜杠都吃:Windows 上 SOURCES 是反斜杠路径,写死 "libs/thorvg"
+#   会静默匹配不上、thorvg 照编照挂(P-0076)
+get_target_property(_lv_srcs lvgl SOURCES)
+set(_blk 0)
+foreach(_s IN LISTS _lv_srcs)
+    if(_s MATCHES "libs[\\/]thorvg" OR _s MATCHES "vg_lite_tvg")
+        set_source_files_properties(${_s} PROPERTIES HEADER_FILE_ONLY TRUE)
+        math(EXPR _blk "${_blk}+1")
+    endif()
+endforeach()
+message(STATUS "[sim] 屏蔽 ThorVG/vg_lite 源码 ${_blk} 个")
+message(STATUS "[sim] 工程=${TARGET_PROJ_DIR}")
+message(STATUS "[sim]   窗口=${SIM_H_RES}x${SIM_V_RES}  内核=${APL_LVGL_DIR}")
+message(STATUS "[sim]   UI=${UI_DIR}")
 
 # Create the main executable, depending on the FreeRTOS option
 if(USE_FREERTOS)
@@ -139,20 +168,25 @@ if(USE_FREERTOS)
     target_link_libraries(main freertos_config FreeRTOS)
 else()
     add_executable(main
-        ${PROJECT_SOURCE_DIR}/main/src/main.c
-        ${PROJECT_SOURCE_DIR}/main/src/mouse_cursor_icon.c
+        ${SIM_MAIN_DIR}/main.c                             # 工程侧仿真入口(引用,不复制)
+        ${PROJECT_SOURCE_DIR}/main/src/mouse_cursor_icon.c  # 仿真器自带光标位图
         ${UI_SOURCES}
+        ${NATIVE_SOURCES}                                  # 工程用户代码层 + io_pc
     )
 endif()
 
 # Define LVGL configuration as a simple include
 target_compile_definitions(main PRIVATE LV_CONF_INCLUDE_SIMPLE)
-target_link_libraries(main lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES} m pthread)
+# m/pthread 是 POSIX 库名,Windows 会翻成 m.lib/pthread.lib(根本不存在)→ 链接直接挂
+if(WIN32)
+    target_link_libraries(main lvgl ${SDL2_LIBRARIES})
+else()
+    target_link_libraries(main lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES} m pthread)
+endif()
 target_include_directories(main PRIVATE
     ${UI_DIR}
-    ${UI_DIR}/lv_ui
-    ${UI_DIR}/lv_ui/pages
-    ${UI_DIR}/lv_interface)
+    ${NATIVE_DIR}
+    ${SIM_MAIN_DIR})
 
 # Only link freertos_config if the FreeRTOS directory exists
 if(USE_FREERTOS)
